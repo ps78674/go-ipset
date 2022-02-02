@@ -14,11 +14,6 @@ Install go-ipset using the "go get" command:
 
     go get github.com/janeczku/go-ipset/ipset
 
-Install dependencies:
-
-    go get github.com/Sirupsen/logrus
-    go get github.com/coreos/go-semver/semver
-
 ## API Reference ##
 
 [![GoDoc](https://godoc.org/github.com/google/go-github/github?status.svg)](https://godoc.org/github.com/janeczku/go-ipset/ipset)
@@ -26,41 +21,45 @@ Install dependencies:
 ## Usage ##
 
 ```go
-import "github.com/janeczku/go-ipset/ipset
+import "github.com/janeczku/go-ipset/ipset"
+```
+
+#### Create a new command interface
+```go
+cmd := ipset.New()
 ```
 
 #### Create a new set
 
-Construct a new IPset instance (creating the set on the fly), then use the various methods to manipulate the IPset.
-For example, to create a new ipset "customers" of type `hash:ip` for storing plain IPv4 addresses:
+To create a new ipset "customers" of type `hash:ip` for storing plain IPv4 addresses:
 
 ```go
-customers := ipset.New("customers", "hash:ip", &ipset.Params{})
+cmd.Create("customers", "hash:ip", &ipset.Params{})
 ```
 
 To create a new ipset to store different sized IPv4 network addresses (with /mask).
 
 ```go
-trustedNetworks := ipset.New("trusted-networks", "hash:net", &ipset.Params{})
+cmd.Create("trusted-networks", "hash:net", &ipset.Params{})
 ```
 
 #### Add a single entry to the set
 
 ```go
-customers.Add("8.8.2.2")
+cmd.Add("customers", "8.8.2.2")
 ```
 
 #### Populate the set with IPv4 addresses (overwriting the previous content)
 
 ```go
 ips := []string{"8.8.8.8", "8.8.4.4"}
-customers.Refresh(ips)
+cmd.Replace("customers", ips)
 ```
 
 #### Remove a single entry from that set:
 
 ```go
-customers.Del("8.8.8.8")
+cmd.Del("customers", "8.8.8.8")
 ```
 
 #### Configure advanced set options
@@ -80,11 +79,11 @@ See http://ipset.netfilter.org/ipset.man.html for their meaning.
 For example, to create a set whose entries will expire after 60 seconds, lets say for temporarily limiting abusive clients:
 
 ```go
-abusers := ipset.New("ratelimited", "hash:ip", &ipset.Params{Timeout: 60})
+cmd.Create("ratelimited", "hash:ip", &ipset.Params{Timeout: 60})
 ```
 
 #### List entries of a set
 ```go
-// list is []string
-list ipset.List("customers")
+// members is []string
+members, _ := cmd.List("customers")
 ```
