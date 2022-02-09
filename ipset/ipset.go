@@ -216,3 +216,33 @@ func (ips *IPSet) Replace(name string, entries []string) error {
 	}
 	return nil
 }
+
+// Save returns ipset save output as []byte
+func (ips *IPSet) Save() ([]byte, error) {
+	out, err := exec.Command(ips.path, []string{"save"}...).CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("%v: %s", err, out)
+	}
+	return out, nil
+}
+
+// Restore invokes ipset restore with stdin data
+func (ips *IPSet) Restore(data []byte) error {
+	cmd := exec.Command(ips.path, []string{"restore"}...)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("error creating stdin pipe: %s", err)
+	}
+
+	go func() {
+		defer stdin.Close()
+		stdin.Write(data)
+	}()
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, out)
+	}
+
+	return nil
+}
