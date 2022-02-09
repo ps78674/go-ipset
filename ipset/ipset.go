@@ -77,9 +77,10 @@ func (ips *IPSet) Create(name string, hashType string, p *Params, opts ...string
 
 	cmd := append([]string{"create", name, hashType, "family", p.HashFamily, "hashsize", strconv.Itoa(p.HashSize),
 		"maxelem", strconv.Itoa(p.MaxElem), "timeout", strconv.Itoa(p.Timeout)}, opts...)
-	out, err := exec.Command(ips.path, cmd...).CombinedOutput()
+
+	_, stderr, err := ips.run(nil /* in */, cmd /* cmd */)
 	if err != nil {
-		return fmt.Errorf("%v: %s", err, out)
+		return fmt.Errorf("%v: %s", err, stderr)
 	}
 
 	return nil
@@ -89,9 +90,9 @@ func (ips *IPSet) Create(name string, hashType string, p *Params, opts ...string
 // opts are additional parameters, for example "timeout 10"
 func (ips *IPSet) Add(name, entry string, opts ...string) error {
 	cmd := append([]string{"add", name, entry}, opts...)
-	out, err := exec.Command(ips.path, cmd...).CombinedOutput()
+	_, stderr, err := ips.run(nil /* in */, cmd /* cmd */)
 	if err != nil {
-		return fmt.Errorf("%v: %s", err, out)
+		return fmt.Errorf("%v: %s", err, stderr)
 	}
 	return nil
 }
@@ -99,51 +100,51 @@ func (ips *IPSet) Add(name, entry string, opts ...string) error {
 // Del deletes entry from the set
 func (ips *IPSet) Del(name, entry string, opts ...string) error {
 	cmd := append([]string{"del", name, entry}, opts...)
-	out, err := exec.Command(ips.path, cmd...).CombinedOutput()
+	_, stderr, err := ips.run(nil /* in */, cmd /* cmd */)
 	if err != nil {
-		return fmt.Errorf("%v: %s", err, out)
+		return fmt.Errorf("%v: %s", err, stderr)
 	}
 	return nil
 }
 
 // Test checks if set contains an entry
 func (ips *IPSet) Test(name, entry string) (bool, error) {
-	out, err := exec.Command(ips.path, "test", name, entry).CombinedOutput()
+	stdout, stderr, err := ips.run(nil /* in */, []string{"test", name, entry} /* cmd */)
 	if err != nil {
-		return false, fmt.Errorf("%v: %s", err, out)
+		return false, fmt.Errorf("%v: %s", err, stderr)
 	}
-	if regexp.MustCompile(`is in set`).Match(out) {
+	if regexp.MustCompile(`is in set`).Match(stdout) {
 		return true, nil
 	}
-	return false, fmt.Errorf("%s", out)
+	return false, fmt.Errorf("%s", stderr)
 }
 
 // Destroy destroys the set.
 func (ips *IPSet) Destroy(name string, opts ...string) error {
 	cmd := append([]string{"destroy", name}, opts...)
-	out, err := exec.Command(ips.path, cmd...).CombinedOutput()
+	_, stderr, err := ips.run(nil /* in */, cmd /* cmd */)
 	if err != nil {
-		return fmt.Errorf("%v: %s", err, out)
+		return fmt.Errorf("%v: %s", err, stderr)
 	}
 	return nil
 }
 
 // DestroyAll destroys all sets.
 func (ips *IPSet) DestroyAll() error {
-	out, err := exec.Command(ips.path, "destroy").CombinedOutput()
+	_, stderr, err := ips.run(nil /* in */, []string{"destroy"} /* cmd */)
 	if err != nil {
-		return fmt.Errorf("%v: %s", err, out)
+		return fmt.Errorf("%v: %s", err, stderr)
 	}
 	return nil
 }
 
 // List returns members of a set
 func (ips *IPSet) List(name string) ([]string, error) {
-	out, err := exec.Command(ips.path, "list", name).CombinedOutput()
+	stdout, stderr, err := ips.run(nil /* in */, []string{"list", name} /* cmd */)
 	if err != nil {
-		return []string{}, fmt.Errorf("%v: %s", err, out)
+		return nil, fmt.Errorf("%v: %s", err, stderr)
 	}
-	listFull := regexp.MustCompile(`(?m)^(.*\n)*Members:\n`).ReplaceAll(out[:], nil)
+	listFull := regexp.MustCompile(`(?m)^(.*\n)*Members:\n`).ReplaceAll(stdout[:], nil)
 	listAddrs := regexp.MustCompile(`([^\s]+).*`).FindAllSubmatch(listFull, -1)
 	var ret []string
 	for _, b := range listAddrs {
@@ -154,11 +155,11 @@ func (ips *IPSet) List(name string) ([]string, error) {
 
 // ListSorted same as List, but returns sorted slice
 func (ips *IPSet) ListSorted(name string) ([]string, error) {
-	out, err := exec.Command(ips.path, "list", name, "-sorted").CombinedOutput()
+	stdout, stderr, err := ips.run(nil /* in */, []string{"list", name, "-sorted"} /* cmd */)
 	if err != nil {
-		return []string{}, fmt.Errorf("%v: %s", err, out)
+		return nil, fmt.Errorf("%v: %s", err, stderr)
 	}
-	listFull := regexp.MustCompile(`(?m)^(.*\n)*Members:\n`).ReplaceAll(out[:], nil)
+	listFull := regexp.MustCompile(`(?m)^(.*\n)*Members:\n`).ReplaceAll(stdout[:], nil)
 	listAddrs := regexp.MustCompile(`([^\s]+).*`).FindAllSubmatch(listFull, -1)
 	var ret []string
 	for _, b := range listAddrs {
@@ -169,37 +170,37 @@ func (ips *IPSet) ListSorted(name string) ([]string, error) {
 
 // ListSets returns all sets
 func (ips *IPSet) ListSets() ([]string, error) {
-	out, err := exec.Command(ips.path, "list", "-n").CombinedOutput()
+	stdout, stderr, err := ips.run(nil /* in */, []string{"list", "-n"} /* cmd */)
 	if err != nil {
-		return nil, fmt.Errorf("%v: %s", err, out)
+		return nil, fmt.Errorf("%v: %s", err, stderr)
 	}
-	return strings.Split(string(out), "\n"), nil
+	return strings.Split(string(stdout), "\n"), nil
 }
 
 // Flush removes all entries from the set
 func (ips *IPSet) Flush(name string, opts ...string) error {
 	cmd := append([]string{"flush", name}, opts...)
-	out, err := exec.Command(ips.path, cmd...).CombinedOutput()
+	_, stderr, err := ips.run(nil /* in */, cmd /* cmd */)
 	if err != nil {
-		return fmt.Errorf("%v: %s", err, out)
+		return fmt.Errorf("%v: %s", err, stderr)
 	}
 	return nil
 }
 
 // FlushAll removes all entries from all sets
 func (ips *IPSet) FlushAll() error {
-	out, err := exec.Command(ips.path, "flush").CombinedOutput()
+	_, stderr, err := ips.run(nil /* in */, []string{"flush"} /* cmd */)
 	if err != nil {
-		return fmt.Errorf("%v: %s", err, out)
+		return fmt.Errorf("%v: %s", err, stderr)
 	}
 	return nil
 }
 
 // Swap swaps the content of two existing sets
 func (ips *IPSet) Swap(from, to string) error {
-	out, err := exec.Command(ips.path, "swap", from, to).Output()
+	_, stderr, err := ips.run(nil /* in */, []string{"swap", from, to} /* cmd */)
 	if err != nil {
-		return fmt.Errorf("%v: %s", err, out)
+		return fmt.Errorf("%v: %s", err, stderr)
 	}
 	return nil
 }
@@ -219,29 +220,19 @@ func (ips *IPSet) Replace(name string, entries []string) error {
 
 // Save returns ipset save output as []byte
 func (ips *IPSet) Save() ([]byte, error) {
-	out, err := exec.Command(ips.path, []string{"save"}...).CombinedOutput()
+	stdout, stderr, err := ips.run(nil /* in */, []string{"save"} /* cmd */)
 	if err != nil {
-		return nil, fmt.Errorf("%v: %s", err, out)
+		return nil, fmt.Errorf("%v: %s", err, stderr)
 	}
-	return out, nil
+
+	return stdout, nil
 }
 
 // Restore invokes ipset restore with stdin data
 func (ips *IPSet) Restore(data []byte) error {
-	cmd := exec.Command(ips.path, []string{"restore"}...)
-	stdin, err := cmd.StdinPipe()
+	_, stderr, err := ips.run(data /* in */, []string{"restore"} /* cmd */)
 	if err != nil {
-		return fmt.Errorf("error creating stdin pipe: %s", err)
-	}
-
-	go func() {
-		defer stdin.Close()
-		stdin.Write(data)
-	}()
-
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%v: %s", err, out)
+		return fmt.Errorf("%v: %s", err, stderr)
 	}
 
 	return nil
