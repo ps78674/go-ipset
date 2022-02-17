@@ -109,11 +109,11 @@ func (ips *IPSet) Del(name, entry string, opts ...string) error {
 
 // Test checks if set contains an entry
 func (ips *IPSet) Test(name, entry string) (bool, error) {
-	stdout, stderr, err := ips.run(nil /* in */, []string{"test", name, entry} /* cmd */)
+	_, stderr, err := ips.run(nil /* in */, []string{"test", name, entry} /* cmd */)
 	if err != nil {
 		return false, fmt.Errorf("%v: %s", err, stderr)
 	}
-	if regexp.MustCompile(`is in set`).Match(stdout) {
+	if regexp.MustCompile(`is in set`).Match(stderr) {
 		return true, nil
 	}
 	return false, fmt.Errorf("%s", stderr)
