@@ -244,3 +244,12 @@ func (ips *IPSet) Restore(data []byte) error {
 	}
 	return nil
 }
+
+// RestoreExist same as Restore but with -exist option
+func (ips *IPSet) RestoreExist(data []byte) error {
+	_, stderr, err := ips.run(data /* in */, []string{"restore", "-exist"} /* cmd */)
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, stderr)
+	}
+	return nil
+}
