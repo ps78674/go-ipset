@@ -224,7 +224,15 @@ func (ips *IPSet) Save() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%v: %s", err, stderr)
 	}
+	return stdout, nil
+}
 
+// Save returns ipset save output as []byte
+func (ips *IPSet) SaveSet(name string) ([]byte, error) {
+	stdout, stderr, err := ips.run(nil /* in */, []string{"list", name, "-output", "save"} /* cmd */)
+	if err != nil {
+		return nil, fmt.Errorf("%v: %s", err, stderr)
+	}
 	return stdout, nil
 }
 
@@ -234,6 +242,5 @@ func (ips *IPSet) Restore(data []byte) error {
 	if err != nil {
 		return fmt.Errorf("%v: %s", err, stderr)
 	}
-
 	return nil
 }
